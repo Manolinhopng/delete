@@ -16,13 +16,12 @@
     background-image: url('https://www.1800flowers.com/blog/wp-content/uploads/2021/05/Birthday-Flowers-Colors.jpg');
     background-size: cover;
     background-position: center;
-    transition: background 1s ease-in-out;
   }
 
   .caja {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 20px;
-    padding: 40px;
+    padding: clamp(20px, 5vw, 40px);
     text-align: center;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     transition: left 0.3s, top 0.3s;
@@ -30,21 +29,28 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    max-width: 90vw;
+    width: auto;
+    box-sizing: border-box;
   }
 
   h1 {
     color: #e91e63;
     text-shadow: 1px 1px 2px #00000030;
+    font-size: clamp(1.2rem, 6vw, 2.5rem);
+    margin: 0 0 clamp(15px, 3vw, 20px) 0;
+    word-wrap: break-word;
   }
 
   button {
-    font-size: 1.1rem;
-    margin: 10px;
-    padding: 10px 25px;
+    font-size: clamp(0.9rem, 4vw, 1.1rem);
+    margin: clamp(5px, 2vw, 10px);
+    padding: clamp(8px, 2vw, 10px) clamp(15px, 4vw, 25px);
     border: none;
     border-radius: 10px;
     cursor: pointer;
     transition: background 0.3s;
+    min-width: clamp(70px, 20vw, 100px);
   }
 
   #si {
@@ -66,55 +72,21 @@
   }
 
   #mensaje {
-    display: none;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 50px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    text-align: center;
-    color: #e91e63;
-    font-size: 1.8rem;
     position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 80%;
-    max-width: 400px;
-    animation: aparecer 1s ease;
-  }
-
-  @keyframes aparecer {
-    from { opacity: 0; transform: translate(-50%, -60%) scale(0.8); }
-    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  }
-
-  .corazon {
-    position: fixed;
-    color: #ff5ca1;
     font-size: 2rem;
-    animation: flotar 6s linear infinite;
-    opacity: 0.8;
-    pointer-events: none;
-  }
-
-  @keyframes flotar {
-    0% { transform: translateY(100vh) scale(0.8); opacity: 0.9; }
-    100% { transform: translateY(-10vh) scale(1.3); opacity: 0; }
-  }
-
-  .audio-note {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #333;
+    color: white;
+    text-shadow: 2px 2px 4px #000;
+    text-align: center;
+    width: 100%;
+    top: 50%;
+    transform: translateY(-50%);
   }
 </style>
 </head>
 <body>
+
+<!-- 🎵 YouTube Player (oculto, solo audio) -->
+<div id="player" style="display: none;"></div>
 
 <div class="caja" id="caja">
   <h1>¿Quieres ser mi novia? 💖</h1>
@@ -122,70 +94,56 @@
   <button id="no">No 😢</button>
 </div>
 
-<div id="mensaje">💞 ¡Sabía que dirías que sí! 💐<br>Te amo muchísimo 🥰</div>
-<div class="audio-note" id="audioNote">🔊 Haz clic para iniciar la música</div>
+<div id="mensaje"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 <script>
+  // Cargar API de YouTube
+  var tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  var player;
+  var musicaIniciada = false;
+
+  // Crear el reproductor cuando la API esté lista
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+      height: '0',
+      width: '0',
+      videoId: 'a5uQMwRMHcs', // ID del video de YouTube
+      playerVars: {
+        'autoplay': 0,
+        'controls': 0,
+        'loop': 1,
+        'playlist': 'a5uQMwRMHcs' // Necesario para loop
+      },
+      events: {
+        'onReady': onPlayerReady
+      }
+    });
+  }
+
+  function onPlayerReady(event) {
+    event.target.setVolume(30); // Volumen al 30%
+  }
+
   const caja = document.getElementById("caja");
   const mensaje = document.getElementById("mensaje");
   const siBtn = document.getElementById("si");
   const noBtn = document.getElementById("no");
-  const audioNote = document.getElementById("audioNote");
-  let musicaIniciada = false;
-  let synth;
 
-  async function iniciarMusica() {
-    if (!musicaIniciada) {
-      await Tone.start();
-      synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: "triangle" },
-        envelope: { attack: 1.5, decay: 0.4, sustain: 0.8, release: 2 }
-      }).toDestination();
-
-      synth.volume.value = -25;
-
-      const melodia = [
-        { nota: "C4", duracion: "4n" },
-        { nota: "E4", duracion: "4n" },
-        { nota: "G4", duracion: "4n" },
-        { nota: "A4", duracion: "2n" },
-        { nota: "F4", duracion: "4n" },
-        { nota: "G4", duracion: "4n" },
-        { nota: "C5", duracion: "2n" },
-      ];
-
-      function tocarMelodia() {
-        let tiempo = Tone.now();
-        melodia.forEach(({ nota, duracion }) => {
-          synth.triggerAttackRelease(nota, duracion, tiempo);
-          tiempo += Tone.Time(duracion).toSeconds();
-        });
-        setTimeout(tocarMelodia, 7000);
-      }
-
-      tocarMelodia();
+  function iniciarMusica() {
+    if (!musicaIniciada && player && player.playVideo) {
+      player.playVideo();
       musicaIniciada = true;
-      audioNote.textContent = "🎵 Música sonando...";
-      setTimeout(() => audioNote.style.display = "none", 3000);
     }
-  }
-
-  function crearCorazon() {
-    const corazon = document.createElement("div");
-    corazon.classList.add("corazon");
-    corazon.textContent = "💖";
-    corazon.style.left = Math.random() * 100 + "vw";
-    corazon.style.animationDuration = 3 + Math.random() * 4 + "s";
-    document.body.appendChild(corazon);
-    setTimeout(() => corazon.remove(), 7000);
   }
 
   siBtn.addEventListener("click", () => {
     iniciarMusica();
     caja.style.display = "none";
-    mensaje.style.display = "block";
-    setInterval(crearCorazon, 400);
+    mensaje.textContent = "¡Sabía que dirías que sí! 💞💐 Te amo 🥰";
   });
 
   noBtn.addEventListener("mouseover", () => {
